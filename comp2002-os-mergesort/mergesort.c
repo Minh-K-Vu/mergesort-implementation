@@ -21,7 +21,8 @@ void * parallel_mergesort(void *arg){
 		struct argument *args = arg;
 		// Check if an argument was provided
 		if (args == NULL){
-			return NULL;
+			fprintf(stderr, "parallel_mergesort did not receive an argument\n");
+			exit(EXIT_FAILURE);
 		}
 		// Grab the arguments values
 		int left = args->left;
@@ -51,6 +52,35 @@ void * parallel_mergesort(void *arg){
     		my_mergesort(left, right);
     		return NULL;
 		}
+		// Create new threads
+		pthread_t leftThread;
+		pthread_t rightThread;	
+		int leftResult = pthread_create(&leftThread, NULL, parallel_mergesort, leftArgs);
+		int rightResult = pthread_create(&rightThread, NULL, parallel_mergesort, rightArgs);
+		// Error checking
+		if (leftResult != 0) {
+			free(leftArgs);
+			my_mergesort(left, mid);
+		} else {
+			int success = pthread_join(leftThread, NULL);
+			// If left join fails
+			if (success != 0) {
+				fprintf(stderr, "pthread_join failed: %s\n", strerror(success));
+				exit(EXIT_FAILURE);
+			}
+		}
+		if (rightResult != 0) {
+			free(rightArgs);
+			my_mergesort(mid + 1, right);
+		} else {
+			int success = pthread_join(rightThread, NULL);
+			// If right join fails
+			if (success != 0){
+				fprintf(stderr, "pthread_join failed: %s\n", strerror(success));
+				exit(EXIT_FAILURE);
+			}
+		}
+		merge(left, mid, mid + 1, right);
 		return NULL;
 }
 
