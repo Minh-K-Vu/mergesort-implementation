@@ -9,10 +9,42 @@
 
 /* this function will be called by mergesort() and also by parallel_mergesort(). */
 void merge(int leftstart, int leftend, int rightstart, int rightend){
+	int leftSize= leftend - leftstart +1;
+	int rightSize= rightend - rightstart +1;
+
+	memcpy(&B[leftstart], &A[leftstart], leftSize*sizeof(int));
+	memcpy(&B[rightstart], &A[rightstart], rightSize*sizeof(int));
+
+	int i= leftstart;
+	int j= rightstart;
+	int k= leftstart;
+
+	while(i <= leftend && j <= rightend) {
+		if( B[i] <= B[j]){
+			A[k++] = B[i++];
+		}else
+			A[k++] = B[j++];
+	}
+	while(i <= leftend){
+		A[k++] = B[i++];
+	} 
+	while(j <= rightend){
+		A[k++] = B[j++];
+	} 
+
+
 }
 
 /* this function will be called by parallel_mergesort() as its base case. */
 void my_mergesort(int left, int right){
+	if(left >= right){return;}
+
+	int mid = left + (right-left)/2;
+
+	my_mergesort(left, mid);
+	my_mergesort(mid+1, right);
+
+	merge(left, mid, mid+1, right);
 }
 
 /* this function will be called by the testing program. */
@@ -28,7 +60,6 @@ void * parallel_mergesort(void *arg){
 		int left = args->left;
 		int right = args->right;
 		int level = args->level;
-		free(args);
 		// Conditions to stop splitting
 		// Condition 1: There are only one or less values left;
 		if (left >= right) {
@@ -68,6 +99,7 @@ void * parallel_mergesort(void *arg){
 				fprintf(stderr, "pthread_join failed: %s\n", strerror(success));
 				exit(EXIT_FAILURE);
 			}
+			free(leftArgs);
 		}
 		if (rightResult != 0) {
 			free(rightArgs);
@@ -79,13 +111,13 @@ void * parallel_mergesort(void *arg){
 				fprintf(stderr, "pthread_join failed: %s\n", strerror(success));
 				exit(EXIT_FAILURE);
 			}
+			free(rightArgs);
 		}
 		merge(left, mid, mid + 1, right);
 		return NULL;
 }
 
-/* we build the argument for the parallel_mergesort function. */
-struct argument * buildArgs(int left, int right, int level){
+struct argument * buildArgs(int left, int right, int level){		
 		struct argument *args = malloc(sizeof *args);
 		// If malloc fails
 		if (args == NULL) {
