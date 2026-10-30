@@ -2,56 +2,108 @@ README.template
 
 ## Project Number/Title 
 
-* Authors: Your Name, and your group members’ names
+* Authors: Minh, Ezequiel
 * Group name: Your Group Name
 
 ## Overview
 
-Concisely explain what the program does. If this exceeds a couple of
-sentences, you're going too far. Generally, you should be pulling this
-right from the project specification. We don't want you to just cut and
-paste, but paraphrase what is stated in the project specification.
+This program sorts an array using recursive merge sort and pthreads. Cutoff levels can be specified through the command-line to control the level of child threads before switching to serial merge sort.
 
 ## Manifest
 
-A listing of source files and other non-generated files, and a brief
-(one-line) explanation of the purpose of each file.
+mergesort.c - Implementations of serial sorting, merging, thread allocation, and argument manangement.
+mergesort.h - Supplied structure of declations and argument.
+test-mergesort.c - Supplied testing program that provides random arrays.
+Makefile - Builds the supplied test program.
+README.md - Program information, build instructions, testing results and documentation.
+testing/test.c - Custom tests to measure accuracy.
+testing/correctness.csv - Results of accuracy tests.
+testing/performance.csv - Results of large-arry timings and calculated speedups.
 
 ## Building the project
 
-This section should tell the user how to build your code.  If you are
-delivering a library, where does it need to be installed, or how do you use
-it? Is this an executable, if so, how can a user get up to speed as fast as
-possible?
+From the project directory run:
+
+make clean
+make
+
+The project includes error.h which was unvailable on the author's device. Therefore this was commented out.
 
 ## Features and usage
 
-Summarise the main features of your program. It is also appropriate to
-instruct the user how to use your program.
+The test program takes in three arguments:
+1. input_size: number of integers (supplied tester requires at least 2).
+2. cutoff: the cutoff level where thread-spliting stops and serial sorting is used.
+3. seed: controls the randomly generated numbers.
+
+Format:
+./test-mergesort <input_size> <cutoff> <seed>
+
+Example:
+./test-mergesort 100000 4 6767
+
+How it works:
+The program creates two threads. Each thread will sort the right and left halves of the array. When both threads finish their results are merged.
+If there isn't enough memory to prepare the threads, the whole section is sorted without creating the threads. If a thread cannot be started, the current thread will sort that half.
+The code that creates an argument struct is responsible for freeing it when it is no longer needed. The tester frees the first argument. Each parent thread frees its children’s arguments after they finish, or immediately if they cannot be started.
 
 ## Testing
 
-This section should detail how you tested your code. Simply stating "I ran
-it a few times and it seems to work" is not sufficient. Your testing needs
-to be detailed here.
+### Custom correctness tests
 
+The custom tests tested 14 different inputs with 3 cutoff levels: 0, 1 and 3. This gives a total of 42 test cases where all passed.
+
+The inputs inside the test include:
+- Already sorted and reverse-sorted values.
+- Equal values and all zeros.
+- Duplicates and mixed positive and negative values.
+- Negative-only and already sorted negative values.
+- INT_MIN and INT_MAX, including repeated extremes.
+- Single-element and two-element arrays.
+- Even-sized and odd-sized arrays.
+- A descending array of 100 elements.
+
+The testing works by coppying the input into two array. One is sorted using qsort() and the other using our implementation. The two arrays are compared to measure accuracy. The results are then recorded in an CSV.
+The custom correctnest test program can be run from the project directory:
+
+clang -Wall -std=gnu89 -pthread testing/test.c mergesort.c -o testing/test
+
+./testing/test
+Running the testing program will write the results into testing/correctness.csv
+
+### Supplied tester
+Using the supplied tester 60 cases passed using sizes 2, 5, 11, 100, and 10001 with cutoffs of 0, 1, 2, 3, 5, and 6 with seeds of 1234 and 6767.
+The results can be seen in testing/supplied-results.csv
+
+Using the supplied tester, four runs with 100 million elements were tested and completed successfully.
+
+### Performance
+
+For performance, 100 million elements using seed 1234 at cutoff levels 0, 2, 4 and 6 were tested. With each cutoff level tested four times, This gave us 16 runs. 
+The results are recorded in testng/performance.csv
+
+| Cutoff | Trial 1 | Trial 2 | Trial 3 | Trial 4 | Average time | Speedup |
+| 0      | 16.10 s | 16.07 s | 16.58 s | 16.40 s | 16.2875 s    | 1.00x   |
+| 2      | 4.52 s  | 4.61 s  | 4.67 s  | 4.56 s  | 4.5900 s     | 3.55x   |
+| 4      | 2.38 s  | 2.42 s  | 2.52 s  | 2.42 s  | 2.4350 s     | 6.69x   |
+| 6      | 2.53 s  | 2.50 s  | 2.58 s  | 2.41 s  | 2.5050 s     | 6.50x   |
+
+The speedup is calculated by dividing average serial time by average parallel time. From the results, cutoff 4 had the fastest speedup. While increasing the cutoff level to 6 did improve performance.
+Additional thread overhead and hardware limits can reduce the benefit of creating more threads.
 ## Known Bugs
 
-List known bugs that you weren't able to fix (or ran out of time to fix).
+No outstanding bugs were observed in the completed tests.
 
 ## Reflection and Self Assessment
 
-Discuss the issues you encountered during development and testing. What
-problems did you have? What did you have to research and learn on your own?
-What kinds of errors did you get? How did you fix them?
+This assignment has improved my understanding in merge sort alogrithm. 
+Through this, it has taught me how to divide the sorting work between threads.
+I learned how to use pthread_create() to create different threads for sorting different sections and pthread_join() to wait for each section to finishing sorting.
+I also learned that increasing the thread count does not always improve performance, as having more threads increases the overhead load which can outweigh the speedup.
 
-What parts of the project did you find challenging? Is there anything that
-finally "clicked" for you in the process of working on this project? How well
-did the development and testing process go for you?
+A challenge that I faced during the assignment was understanding when to join threads and who should free each argument struct.
+During testing, we encountered errors where we had multiple functions freeing up the same argument. We fixed this by commenting out the functions to indentify the error. This help us indentified the caller function that is responsible for freeing the argument.
 
 ## Sources Used
 
-If you used any sources outside of the textbook, you should list them here. 
-If you looked something up on stackoverflow.com or you use help from AI, and 
-fail to cite it in this section, it will be considered plagiarism and dealt 
-with accordingly. So be safe CITE!
+ChatGPT - Explanations about merge sort, pthread and testing.
